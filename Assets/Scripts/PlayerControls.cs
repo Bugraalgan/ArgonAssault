@@ -1,74 +1,78 @@
 using UnityEngine;
 public class PlayerControls : MonoBehaviour
 {
-    [SerializeField] float controlspeedX=1f;
-    [SerializeField] float controlspeedY=1f;
-    [SerializeField] float xRange=5f;
-    [SerializeField] float yRange=5f;
-
-    [SerializeField] float positionPitchFactor=-2f;
-    [SerializeField] float controlFactor=-10f;
-    [SerializeField] float positionYawFactor=2f;
-    [SerializeField] float controlRollFactor=-20f;
-
+    [Header("General Setup Setting")]
+    [Tooltip("How fast ship moves up and down based upon player input")]
+    [SerializeField] float controlSpeed = 10f;
+    [SerializeField] float xRange = 10f;
+    [SerializeField] float yRange = 7f;
+    
+    [Header("Laser gun array")]
     [SerializeField] GameObject[] lasers;
+    
+    
+    [Header("Screen position based tuning")]
+    [SerializeField] float positionPitchFactor = -2f;
+    [SerializeField] float positionYawFactor = 2f;
+    [Header("Player input based tuning")]
+    [SerializeField] float controlPitchFactor = -10f;
+    [SerializeField] float controlRollFactor = -20f;
 
-    float xThrow,yThrow;
+    float xThrow, yThrow;
 
     void Update()
     {
-        if(Input.GetButton("Fire1")){
-            ActiveLasers();
-        }else{
-            DeActiveLasers();
-        }
-        ProcessPosition();
+        ProcessTranslation();
         ProcessRotation();
-    }
-    void ActiveLasers(){
-        foreach(GameObject laser in lasers){
-            laser.SetActive(true);
-        }
-
+        ProcessFiring();
     }
 
-    void DeActiveLasers(){
-        foreach(GameObject laser in lasers){
-            laser.SetActive(false);
-
-        }
-
+    void ProcessRotation()
+    {
+        float pitchDueToPosition = transform.localPosition.y * positionPitchFactor;
+        float pitchDueToControlThrow = yThrow * controlPitchFactor;
+        
+        float pitch = pitchDueToPosition + pitchDueToControlThrow;
+        float yaw = transform.localPosition.x * positionYawFactor;
+        float roll = xThrow * controlRollFactor;
+        
+        transform.localRotation = Quaternion.Euler(pitch, yaw, roll);
     }
-   
-    void ProcessRotation(){
 
-        float pitchDueToPosition=transform.localPosition.y * yThrow;
-        float pitchDueToThrow=positionPitchFactor * controlFactor;
-
-        float pitch=pitchDueToPosition+pitchDueToThrow;
-        float yaw=transform.localPosition.x * positionYawFactor;
-        float roll=xThrow * controlRollFactor;
-        transform.localRotation=Quaternion.Euler(pitch,yaw,roll);
-     }
-   
-   
-   
-   
-    void ProcessPosition(){
+    void ProcessTranslation()
+    {
         xThrow = Input.GetAxis("Horizontal");
         yThrow = Input.GetAxis("Vertical");
 
+        float xOffset = xThrow * Time.deltaTime * controlSpeed;
+        float rawXPos = transform.localPosition.x + xOffset;
+        float clampedXPos = Mathf.Clamp(rawXPos, -xRange, xRange);
 
-        float xOffSet=xThrow * Time.deltaTime * controlspeedX;
-        float rawXPos=transform.localPosition.x + xOffSet;
-        float clampPosX = Mathf.Clamp(rawXPos,-xRange,xRange);
+        float yOffset = yThrow * Time.deltaTime * controlSpeed;
+        float rawYPos = transform.localPosition.y + yOffset;
+        float clampedYPos = Mathf.Clamp(rawYPos, -yRange, yRange);
 
-        float yOffSet=yThrow * Time.deltaTime * controlspeedY;
-        float rawYPos=transform.localPosition.y + yOffSet;
-        float clampPosY = Mathf.Clamp(rawYPos,-yRange,yRange);
-
-        transform.localPosition = new Vector3(clampPosX,clampPosY,transform.localPosition.z);
+        transform.localPosition = new Vector3(clampedXPos, clampedYPos, transform.localPosition.z);
     }
 
+    void ProcessFiring()
+    {
+        if (Input.GetButton("Fire1"))
+        {
+            SetLasersActive(true);
+        }
+        else
+        {
+            SetLasersActive(false);
+        }
+    }
 
+    void SetLasersActive(bool isActive)
+    {
+        foreach (GameObject laser in lasers)
+        {
+            var emissionModule = laser.GetComponent<ParticleSystem>().emission;
+            emissionModule.enabled = isActive;
+        }
+    }
 }
